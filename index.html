@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chorecraft</title>
+<meta name="description" content="Choose today's flame, get one small quest, begin in one tap. A gentle household quest game.">
+<meta name="theme-color" content="#1d1228">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chorecraft">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout: the Grimoire is one calm column of action (flame check-in → one quest → next/later → write your own), with the reward world (hearth wards, relics, form, stats) beside it on wide screens and below it on phones. Beginning a quest opens a full-screen Active Quest that hides everything else.
+   Colour rules: parchment = planning, forms, instructions · deep plum = rewards, identity, collection · bright violet = the primary action · bright gold = state, progress, focus, earned · pink = care and confirmation · red = destructive only. */
+:root{
+  --bg:#17131f; --star:rgba(244,235,221,.5);
+  --plum:#2a1838; --plum-hi:#3b2152; --plum-deep:#1d1228;
+  --parch:#efe4cc; --parch-hi:#fbf7ef; --ink:#33243f; --ink-2:#5e4f69; --ink-rule:rgba(94,79,105,.28);
+  --cream:#f4ebdd; --mist:#b8adc4; --rule:rgba(201,163,91,.28); --frame:#8a6630; --frame-2:#5c4424;
+  --gold:#f1dca0; --gold-mid:#c9a35b;
+  --violet:#6e3fb0; --violet-hi:#8c5cc7; --glow:rgba(155,111,216,.55);
+  --pink:#e79ac4; --pink-ink:#9c2f6e; --red:#ff8a80; --red-ink:#a8322b;
+  --page-text:#f4ebdd; --page-muted:#b8adc4;
+  --display:"Press Start 2P",ui-monospace,Menlo,monospace;
+  --label:"Silkscreen",ui-monospace,Menlo,monospace;
+  --body:"Pixelify Sans",ui-rounded,"Trebuchet MS",system-ui,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5efe3;--star:rgba(122,90,43,.25);--page-text:#33243f;--page-muted:#5e4f69;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f5efe3;--star:rgba(122,90,43,.25);--page-text:#33243f;--page-muted:#5e4f69;color-scheme:light}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--page-text);font-family:var(--body);font-size:18px;line-height:1.45;
+  background-image:radial-gradient(1px 1px at 12% 18%,var(--star) 50%,transparent 51%),radial-gradient(1px 1px at 68% 9%,var(--star) 50%,transparent 51%),radial-gradient(2px 2px at 42% 58%,var(--star) 50%,transparent 51%),radial-gradient(1px 1px at 86% 74%,var(--star) 50%,transparent 51%),radial-gradient(1px 1px at 24% 88%,var(--star) 50%,transparent 51%);
+  background-size:240px 240px}
+body.locked{overflow:hidden}
+img.ic{display:block;object-fit:contain;flex:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+p{margin:0}
+
+/* ---------- top bar ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--plum-deep)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--plum-deep);border-bottom:3px solid var(--frame);color:var(--cream)}
+.bar .in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:14px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{font-family:var(--display);font-size:14px;color:var(--cream);text-shadow:3px 3px 0 var(--violet);margin:0;letter-spacing:.02em}
+.bar .gap{flex:1}
+.pill{display:flex;align-items:center;gap:7px;font-family:var(--display);font-size:10px;color:var(--cream)}
+.pill img.ic{width:24px;height:24px}
+.bar .av{width:30px;height:38px;object-fit:contain}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1120px;margin:0 auto;padding-block:20px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (min-width:920px){.wrap{grid-template-columns:minmax(0,7fr) minmax(0,5fr);align-items:start}}
+
+/* windows: heavy double frame outside, single rules inside */
+.win{position:relative;border:3px solid var(--frame);box-shadow:0 0 0 3px var(--plum-deep),0 0 0 5px var(--frame-2);margin:5px;padding:18px}
+.win.plum{background:var(--plum);color:var(--cream)}
+.win.parch{background:var(--parch);color:var(--ink)}
+.eyebrow{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-family:var(--label);font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.plum .eyebrow{color:var(--mist)} .parch .eyebrow{color:var(--ink-2)}
+.eyebrow img.ic{width:24px;height:24px}
+h2{margin:0;font-family:var(--display);font-weight:400;font-size:15px;line-height:1.6;text-wrap:balance}
+.lede{margin-top:6px;font-size:18px}
+.plum .lede,.plum .muted{color:var(--mist)} .parch .muted{color:var(--ink-2)}
+.muted{font-size:16px}
+hr.rule{border:0;height:1px;margin:16px 0;background:var(--rule)}
+.parch hr.rule{background:var(--ink-rule)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:10px 16px;border:2px solid var(--frame);background:var(--plum-hi);color:var(--cream);
+  font-family:var(--display);font-size:10px;line-height:1.5;text-transform:uppercase;text-align:center;box-shadow:3px 3px 0 var(--plum-deep)}
+.btn:hover{background:#4a2a66}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--plum-deep)}
+.btn img.ic{width:22px;height:22px;margin:-4px 0}
+.btn.primary{background:var(--violet);border-color:var(--violet-hi);color:#fff;font-size:12px;min-height:56px;padding:14px 22px;
+  box-shadow:inset 0 -4px 0 var(--gold),0 0 18px var(--glow),3px 3px 0 var(--plum-deep)}
+.btn.primary:hover{background:#7d4cc2}
+.btn.primary:active{box-shadow:inset 0 -2px 0 var(--gold),0 0 10px var(--glow)}
+.btn.quiet{background:transparent;box-shadow:none;border-color:var(--frame)}
+.parch .btn.quiet{color:var(--ink);border-color:var(--ink-2)}
+.parch .btn.quiet:hover{background:var(--parch-hi)}
+.btn.danger{background:transparent;box-shadow:none;border-color:var(--red);color:var(--red)}
+.btn.danger[data-armed]{background:var(--red);color:var(--plum-deep)}
+.btn.big{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.links{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.lnk{background:none;border:0;padding:6px 0;min-height:36px;font-family:var(--body);font-size:17px;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.plum .lnk{color:var(--cream)} .parch .lnk{color:var(--ink)}
+.lnk.cant{font-family:var(--display);font-size:10px;text-transform:uppercase;text-decoration:none;border:2px solid currentColor;padding:10px 14px;min-height:44px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row.sb{justify-content:space-between}
+
+/* choice tiles (energy, magic, durations): filled surfaces, unmistakable selected state */
+.choices{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.choice{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;text-align:left;padding:12px;border:2px solid transparent;background:var(--parch-hi);color:var(--ink);min-height:64px}
+.choice:hover{border-color:var(--ink-2)}
+.choice img.ic{width:32px;height:32px}
+.choice b{display:block;font-family:var(--label);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.choice span{display:block;font-size:15px;line-height:1.3;color:var(--ink-2)}
+.choice[aria-pressed="true"]{border:3px solid var(--gold-mid);box-shadow:inset 0 0 0 2px var(--parch-hi),inset 0 0 16px rgba(140,92,199,.45);background:#f6eefb}
+.choice[aria-pressed="true"]::after{content:"✦ Selected";position:absolute;top:-11px;right:8px;padding:1px 6px;background:var(--ink);color:var(--gold);font-family:var(--label);font-size:12px}
+.plum .choice{background:var(--plum-deep);color:var(--cream)}
+.plum .choice span{color:var(--mist)}
+.plum .choice:hover{border-color:var(--frame)}
+.plum .choice[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 2px var(--plum-deep),inset 0 0 18px var(--glow);background:var(--plum-hi)}
+.plum .choice[aria-pressed="true"]::after{background:var(--gold);color:var(--plum-deep)}
+.durs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dur{min-height:40px;padding:6px 12px;border:2px solid var(--ink-rule);background:var(--parch-hi);color:var(--ink);font-family:var(--label);font-size:14px}
+.dur[aria-pressed="true"]{border-color:var(--gold-mid);box-shadow:inset 0 0 10px rgba(140,92,199,.4);font-weight:700}
+.dur[aria-pressed="true"]::before{content:"✦ "}
+.durs input{width:5.5ch;min-height:40px;padding:4px 8px;border:2px solid var(--ink-2);background:var(--parch-hi);color:var(--ink);font-family:var(--label);font-size:15px}
+
+/* check-in */
+.checkin.done .choices{display:none}
+.today{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.today img.ic{width:28px;height:28px}
+.today b{font-family:var(--label);font-size:16px;text-transform:uppercase}
+
+/* the Now card */
+.now .kind{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-family:var(--label);font-size:14px;color:var(--ink-2);text-transform:uppercase}
+.now .kind img.ic{width:22px;height:22px}
+.now h2{font-size:clamp(15px,3.6vw,19px);margin-top:10px;color:var(--ink)}
+.now .how{margin-top:8px;font-size:20px;line-height:1.4;max-width:46ch}
+.now .actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:16px;align-items:stretch}
+@media (max-width:480px){.now .actions{grid-template-columns:minmax(0,1fr)}}
+.now .actions .lnk.cant{display:flex;align-items:center;justify-content:center}
+.now .links{margin-top:10px}
+.paused-tag{display:inline-block;padding:2px 8px;background:var(--ink);color:var(--gold);font-family:var(--label);font-size:13px}
+.waiting{padding:6px 0;color:var(--ink-2)}
+
+/* quest stack */
+.stack{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.qcard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;background:var(--parch-hi);border:1px solid var(--ink-rule)}
+.qcard img.ic{width:30px;height:30px}
+.qcard b{display:block;font-family:var(--label);font-size:15px;font-weight:700;text-transform:uppercase;line-height:1.25;overflow-wrap:anywhere}
+.qcard span{display:block;font-size:15px;line-height:1.3;color:var(--ink-2);overflow-wrap:anywhere}
+.qcard .acts{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.qcard .btn{min-height:38px;padding:8px 12px;font-size:9px;color:var(--cream)}
+.qcard .lnk{font-size:15px;padding:2px 0;min-height:28px}
+.qcard.done b{text-decoration:line-through;color:var(--ink-2)}
+details.fold{margin-top:14px;border-top:1px solid var(--ink-rule);padding-top:10px}
+details.fold summary{cursor:pointer;font-family:var(--label);font-size:15px;font-weight:700;text-transform:uppercase;color:var(--ink-2);min-height:36px;display:flex;align-items:center;gap:8px;list-style:none}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::before{content:"▶";font-family:var(--display);font-size:8px}
+details.fold[open] summary::before{content:"▼"}
+details.fold .stack{margin-top:8px}
+.plum details.fold{border-top-color:var(--rule)}
+.plum details.fold summary{color:var(--mist)}
+.empty{padding:6px 0;color:var(--ink-2);font-size:16px}
+
+/* composer */
+form.compose{display:grid;gap:10px}
+form.compose label{display:grid;gap:4px;font-family:var(--label);font-size:13px;text-transform:uppercase;color:var(--ink-2)}
+form.compose input,form.compose select{min-height:44px;padding:8px 10px;border:2px solid var(--ink-2);background:var(--parch-hi);color:var(--ink);font-family:var(--body);font-size:18px;min-width:0;text-transform:none}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media (max-width:460px){.two{grid-template-columns:minmax(0,1fr)}}
+
+/* hearth + wards */
+.hearth{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.hearth .lamp{width:48px;height:58px;transition:filter .5s}
+.hearth b{display:block;font-family:var(--label);font-size:15px;text-transform:uppercase}
+.wards{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:14px}
+.ward{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px 8px;background:var(--plum-deep);text-align:center}
+.ward img.ic{width:34px;height:34px;filter:grayscale(.85) brightness(.45);transition:filter .5s}
+.ward span{font-size:13px;line-height:1.15;color:var(--mist)}
+.ward.lit{box-shadow:inset 0 -3px 0 var(--gold)}
+.ward.lit img.ic{filter:drop-shadow(0 0 8px rgba(255,214,138,.7))}
+.ward.lit span{color:var(--gold)}
+.nextup{margin-top:14px;padding:10px 12px;background:var(--plum-deep);font-size:16px}
+.nextup b{font-family:var(--label);font-size:14px;text-transform:uppercase;color:var(--gold);display:block}
+.sparks{display:flex;align-items:center;gap:10px;margin-top:12px}
+.sparks img.ic{width:26px;height:26px}
+.meter{flex:1;height:12px;background:var(--plum-deep);overflow:hidden;border:1px solid var(--frame)}
+.meter i{display:block;height:100%;width:0;background:var(--gold);transition:width .4s steps(8)}
+.sparks span{font-family:var(--display);font-size:9px;color:var(--gold)}
+
+/* relics */
+.relics{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+.relics.all{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.relic{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center;padding:10px;background:var(--plum-deep)}
+.relics.all .relic{grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center;align-content:start}
+.relic img.ic{width:64px;height:64px;filter:brightness(0) opacity(.55)}
+.relic.rev img.ic{filter:grayscale(.7) brightness(.75)}
+.relic.partial img.ic{filter:grayscale(1) brightness(.5)}
+.relic.on img.ic{filter:drop-shadow(0 0 10px var(--glow))}
+.relic b{display:block;font-family:var(--label);font-size:14px;font-weight:700;text-transform:uppercase;line-height:1.2}
+.relic.on b{color:var(--gold)}
+.relic p{font-size:15px;line-height:1.3;color:var(--mist);margin-top:3px}
+.pips{display:flex;gap:2px;margin-top:6px;flex-wrap:wrap}
+.relics.all .pips{justify-content:center}
+.pips i{width:9px;height:9px;background:var(--plum-hi);border:1px solid var(--frame)}
+.pips i.f{background:var(--gold);border-color:var(--gold)}
+.earned{font-family:var(--label);font-size:12px;color:var(--gold);margin-top:4px}
+
+/* form + magic */
+.forms{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.form{position:relative;padding:4px;background:var(--plum-deep);border:2px solid transparent;aspect-ratio:3/4;max-width:100%}
+.form img{width:100%;height:100%;object-fit:contain;display:block}
+.form:hover{border-color:var(--frame)}
+.form[aria-pressed="true"]{border:3px solid var(--gold);box-shadow:inset 0 0 14px var(--glow);background:var(--plum-hi)}
+.form[aria-pressed="true"]::after{content:"✦";position:absolute;top:-2px;right:2px;font-size:16px;color:var(--gold)}
+.formlabel{margin-top:10px;font-family:var(--label);font-size:14px;color:var(--gold)}
+
+/* stats + settings */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.stat{padding:10px;background:var(--plum-deep)}
+.stat b{display:block;font-family:var(--display);font-size:13px;color:var(--cream);font-variant-numeric:tabular-nums}
+.stat span{font-size:14px;color:var(--mist)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--rule)}
+.toggle:first-child{border-top:0}
+.toggle button{min-width:76px}
+.toggle button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.foot{text-align:center;color:var(--page-muted);font-size:16px;grid-column:1/-1}
+
+/* ---------- Active Quest: one quest, one timer, one completion ---------- */
+.active{position:fixed;inset:0;z-index:40;background:var(--plum-deep);color:var(--cream);overflow:auto;
+  padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.active .stage{max-width:600px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:18px;justify-content:center}
+.active .kind{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-family:var(--label);font-size:15px;color:var(--mist);text-transform:uppercase}
+.active .kind img.ic{width:26px;height:26px}
+.active h2{font-size:clamp(17px,4.6vw,24px);color:var(--cream);outline:none}
+.slip{background:var(--parch);color:var(--ink);padding:14px 16px;font-size:21px;line-height:1.4;border:3px solid var(--frame)}
+.slip small{display:block;margin-top:6px;font-size:16px;color:var(--ink-2)}
+.flame{display:flex;align-items:center;gap:18px;justify-content:center;padding:6px 0}
+.flame img.ic{width:72px;height:78px;transition:filter .4s,transform .4s}
+.active[data-s="running"] .flame img.ic{animation:flick .5s steps(2) infinite alternate}
+.active[data-s="paused"] .flame img.ic,.active[data-s="spent"] .flame img.ic{filter:grayscale(.6) brightness(.6);transform:scale(.85)}
+@keyframes flick{to{transform:scale(1.05,1.1) translateY(-3px)}}
+.clock{font-family:var(--display);font-size:clamp(34px,11vw,56px);color:var(--cream);font-variant-numeric:tabular-nums}
+.burn{height:8px;background:var(--plum);overflow:hidden}
+.burn i{display:block;height:100%;background:var(--gold);width:100%;transition:width 1s linear}
+.status{text-align:center;font-size:19px;color:var(--mist)}
+.status b{display:block;font-family:var(--display);font-size:12px;line-height:1.6;color:var(--cream);margin-bottom:4px}
+.active .links{justify-content:center}
+.active .lnk{color:var(--cream)}
+.active .btn.primary{font-size:13px}
+.done-card{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.done-card .burst{width:96px;height:96px}
+.done-card h2{color:var(--pink)}
+.gain{display:flex;flex-direction:column;gap:6px;align-items:center;font-size:19px}
+.gain div{display:flex;align-items:center;gap:8px}
+.gain img.ic{width:26px;height:26px}
+.ladder{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.ladder li{font-size:17px;color:var(--mist);padding-left:18px;position:relative}
+.ladder li::before{content:"·";position:absolute;left:4px}
+.ladder li.cur{color:var(--cream);font-weight:600}
+.ladder li.cur::before{content:"▶";font-family:var(--display);font-size:8px;top:5px;color:var(--gold)}
+.ladder li.past{text-decoration:line-through;opacity:.7}
+
+/* toast */
+.toast{position:fixed;left:0;right:0;bottom:0;z-index:50;pointer-events:none;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));opacity:0;transform:translateY(20px);transition:opacity .2s,transform .25s steps(4)}
+.toast.show{opacity:1;transform:none}
+.toast .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 14px;background:var(--plum);color:var(--cream);border:3px solid var(--frame);box-shadow:0 0 0 3px var(--plum-deep)}
+.toast img{width:40px;height:50px;object-fit:contain}
+.toast b{display:block;font-family:var(--label);font-size:14px;color:var(--gold);text-transform:uppercase}
+.toast span{font-size:17px}
+
+.qcard.rit{grid-template-columns:auto minmax(0,1fr)}
+.qcard.rit .acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 14px;padding-top:6px;border-top:1px solid var(--ink-rule)}
+.active:not([hidden]) ~ .toast{bottom:auto;top:0;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:0;transform:translateY(-20px)}
+.active:not([hidden]) ~ .toast.show{transform:none}
+.rit .due-tag,.rit .rest-tag{display:inline-block;margin-top:4px;padding:1px 7px;font-family:var(--label);font-size:12px;text-transform:uppercase}
+.rit .due-tag{background:var(--ink);color:var(--gold)}
+.rit .rest-tag{border:1px solid var(--ink-rule);color:var(--ink-2)}
+.rit.resting{background:transparent}
+.rit.resting b{color:var(--ink-2)}
+.reset-note{display:block;margin-top:4px;font-size:14px;color:var(--pink-ink)}
+.subhead{margin:14px 0 8px;font-family:var(--label);font-size:14px;font-weight:700;text-transform:uppercase;color:var(--ink-2)}
+.subhead:first-of-type{margin-top:0}
+/* ally */
+.ally{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;background:var(--plum);border:2px solid var(--frame)}
+.ally img{width:48px;height:60px;object-fit:contain;display:block}
+.ally b{display:block;font-family:var(--label);font-size:14px;color:var(--gold);text-transform:uppercase}
+.ally span{font-size:18px;color:var(--cream)}
+.ally.person img{width:40px;height:40px}
+.paths{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.active .choice{background:var(--plum);color:var(--cream)}
+.active .choice span{color:var(--mist)}
+.active .choice[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 2px var(--plum),inset 0 0 18px var(--glow);background:var(--plum-hi)}
+.active .choice[aria-pressed="true"]::after{background:var(--gold);color:var(--plum-deep)}
+.active .forms{grid-template-columns:repeat(auto-fill,minmax(56px,1fr))}
+.invite{background:var(--parch);color:var(--ink);padding:12px 14px;font-size:18px;border:3px solid var(--frame);user-select:all}
+.active label.fld{display:grid;gap:4px;font-family:var(--label);font-size:13px;text-transform:uppercase;color:var(--mist)}
+.active label.fld input{min-height:44px;padding:8px 10px;border:2px solid var(--frame);background:var(--plum);color:var(--cream);font-family:var(--body);font-size:18px;text-transform:none}
+body.still *,body.still *::before,body.still *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<header class="bar">
+  <div class="in">
+    <img class="av" id="barAv" src="a/av0.webp" alt="">
+    <p class="brand">Chorecraft</p>
+    <span class="gap"></span>
+    <span class="pill" title="Hearth Glow"><img class="ic" id="barLamp" src="a/lantern.webp" alt="Hearth Glow"></span>
+    <span class="pill"><img class="ic" src="a/spark.webp" alt="Sparks"><span id="barSparks">0</span></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="col">
+    <!-- 1. Spell Power check-in -->
+    <section class="win parch checkin" id="checkin" aria-labelledby="ciTitle">
+      <div class="eyebrow"><img class="ic" src="a/flame.webp" alt="">Spell Power</div>
+      <h2 id="ciTitle">How strong is the flame today?</h2>
+      <p class="lede muted" id="ciLede">Every answer is a good one. It only changes which quests appear.</p>
+      <div class="today" id="today" hidden><img class="ic" id="todayIc" src="a/p_steady.webp" alt=""><b id="todayTxt">Steady</b><span class="muted" id="todayHint"></span><button class="lnk" id="changePower">Change</button></div>
+      <div class="choices" id="power" role="group" aria-label="Today's flame" style="margin-top:14px"></div>
+    </section>
+
+    <!-- 2–4. One recommended quest -->
+    <section class="win parch now" id="now" aria-labelledby="nowTitle">
+      <div class="eyebrow"><img class="ic" src="a/orb.webp" alt="">Now</div>
+      <div id="nowBody"></div>
+    </section>
+
+    <!-- 6. Next and Later -->
+    <section class="win parch" aria-labelledby="nextTitle">
+      <div class="eyebrow"><img class="ic" src="a/h_log.webp" alt=""><span id="nextTitle">Next</span></div>
+      <ul class="stack" id="nextList"></ul>
+      <details class="fold" id="laterFold"><summary id="laterSum">Later</summary><ul class="stack" id="laterList"></ul></details>
+      <details class="fold" id="spellFold"><summary>Starter spells</summary><p class="muted" style="margin-top:6px">Ready-made quests that fit today's flame.</p><ul class="stack" id="spellList"></ul></details>
+      <details class="fold" id="writeFold"><summary>Write your own quest</summary>
+        <form class="compose" id="compose" style="margin-top:10px">
+          <label>Quest name<input id="cTitle" placeholder="Disperse the chair's laundry council" autocomplete="off"></label>
+          <label>What you'll actually do<input id="cHow" placeholder="Put the clothes on the chair into one basket" autocomplete="off"></label>
+          <div class="two">
+            <label>Realm<select id="cRealm"></select></label>
+            <label>Size<select id="cSize"><option value="flicker">Flickering · under 2 min</option><option value="steady" selected>Steady · 3–10 min</option><option value="blazing">Blazing · bigger reset</option></select></label>
+          </div>
+          <div class="row"><button class="btn primary" type="submit" data-act="now">Begin now</button><button class="btn quiet" type="submit" data-act="later">Save for later</button></div>
+        </form>
+      </details>
+    </section>
+
+    <!-- Ritual Book -->
+    <section class="win parch" id="ritualWin" aria-labelledby="ritTitle">
+      <div class="eyebrow"><img class="ic" src="a/r_chrono.webp" alt=""><span id="ritTitle">Ritual Book</span></div>
+      <p class="muted">Quests that return on a rhythm. A missed ritual simply resets. Nothing is owed.</p>
+      <p class="subhead">Ready today</p>
+      <ul class="stack" id="ritDue"></ul>
+      <details class="fold" id="ritRestFold"><summary id="ritRestSum">Resting</summary><ul class="stack" id="ritRest"></ul></details>
+      <details class="fold" id="ritBookFold"><summary>Add from the book</summary><p class="muted" style="margin-top:6px">Common household rituals. Add one and choose its rhythm later if you like.</p><ul class="stack" id="ritBook"></ul></details>
+      <details class="fold" id="ritWriteFold"><summary>Write a ritual</summary>
+        <form class="compose" id="ritForm" style="margin-top:10px">
+          <label>Ritual name<input id="rTitle" placeholder="The Closing Ritual" autocomplete="off"></label>
+          <label>What you'll actually do<input id="rHow" placeholder="Clear the counter and start the dishwasher" autocomplete="off"></label>
+          <div class="two">
+            <label>Realm<select id="rRealm"></select></label>
+            <label>Size<select id="rSize"><option value="flicker">Flickering · under 2 min</option><option value="steady" selected>Steady · 3–10 min</option><option value="blazing">Blazing · bigger reset</option></select></label>
+          </div>
+          <label>Rhythm<select id="rRhythm"></select></label>
+          <div class="row"><button class="btn primary" type="submit">Add to the Ritual Book</button></div>
+        </form>
+      </details>
+    </section>
+  </div>
+
+  <div class="col">
+    <!-- 7. Hearth progress -->
+    <section class="win plum" aria-labelledby="hearthTitle">
+      <div class="eyebrow"><img class="ic" src="a/h_realms.webp" alt=""><span id="hearthTitle">The Hearth</span></div>
+      <div class="hearth"><img class="ic lamp" id="lamp" src="a/lantern.webp" alt=""><div><b id="glowName">Hearth Glow</b><p class="muted" id="glowTxt">The hearth is warm.</p></div></div>
+      <div class="sparks"><img class="ic" src="a/spark.webp" alt=""><div class="meter" aria-hidden="true"><i id="sparkFill"></i></div><span id="sparkTxt">0</span></div>
+      <div class="nextup" id="nextUp"></div>
+      <div class="wards" id="wards"></div>
+    </section>
+
+    <!-- 8. Relic preview / cabinet -->
+    <section class="win plum" aria-labelledby="relicTitle">
+      <div class="eyebrow"><img class="ic" src="a/h_relics.webp" alt=""><span id="relicTitle">Relics</span></div>
+      <div class="relics" id="relics"></div>
+      <div class="links" style="margin-top:12px"><button class="lnk" id="cabinet" aria-expanded="false">View relic cabinet</button><button class="lnk" id="reveal" aria-pressed="false">Show all unlock requirements</button></div>
+    </section>
+
+    <!-- 9. Form + household magic -->
+    <section class="win plum" aria-labelledby="formTitle">
+      <div class="eyebrow"><img class="ic" src="a/h_status.webp" alt=""><span id="formTitle">You</span></div>
+      <details class="fold" id="formFold" style="margin-top:0;border-top:0;padding-top:0"><summary>Choose your form</summary>
+        <p class="muted" style="margin:6px 0 10px">Purely how you look. It changes nothing else.</p>
+        <div class="forms" id="forms" role="group" aria-label="Forms"></div>
+        <p class="formlabel" id="formLabel"></p>
+      </details>
+      <details class="fold" id="magicFold"><summary>Choose your household magic</summary>
+        <p class="muted" style="margin:6px 0 10px">Shapes which quests the Oracle suggests. Nothing is ever locked away. Change it any time.</p>
+        <div class="choices" id="magic" role="group" aria-label="Household magic"></div>
+      </details>
+    </section>
+
+    <!-- 10. Lifetime + settings -->
+    <section class="win plum" aria-labelledby="statTitle">
+      <div class="eyebrow"><img class="ic" src="a/h_system.webp" alt=""><span id="statTitle">The Long Record</span></div>
+      <div class="stats" id="stats"></div>
+      <hr class="rule">
+      <div class="toggle"><span>Sound effects</span><button class="btn quiet" id="sound" aria-pressed="false">Off</button></div>
+      <div class="toggle"><span>Motion</span><button class="btn quiet" id="motion" aria-pressed="true">On</button></div>
+      <div class="toggle"><span>Release finished quests from the log</span><button class="btn danger" id="clearDone">Release</button></div>
+      <div class="toggle"><span>Move your save to another device or browser</span><button class="btn quiet" id="moveBtn" aria-expanded="false">Move</button></div>
+      <div id="movePanel" hidden style="display:grid;gap:8px;padding:8px 0 4px">
+        <p class="muted">Copy your save code here, then paste it into Chorecraft wherever you open it next. Pasting replaces the progress that's there.</p>
+        <div class="row"><button class="btn" id="copySave">Copy save code</button></div>
+        <label for="pasteSave" class="muted">Paste a save code</label>
+        <textarea id="pasteSave" rows="3" style="width:100%;min-width:0;padding:8px;background:var(--plum-deep);color:var(--cream);border:2px solid var(--frame);font-family:var(--body);font-size:15px;resize:vertical"></textarea>
+        <div class="row"><button class="btn danger" id="loadSave">Load this save</button><span class="muted" id="moveMsg" role="status"></span></div>
+      </div>
+      <div class="toggle" id="undoRow" hidden><span id="undoTxt"></span><button class="btn quiet" id="undoBtn">Undo</button></div>
+      <p class="muted" id="sync" style="margin-top:8px">Opening your save file…</p>
+    </section>
+  </div>
+  <p class="foot">The house is not evidence of failure. It is simply a realm that needs tending.</p>
+</div>
+
+<!-- Active Quest -->
+<div class="active" id="active" role="dialog" aria-modal="true" aria-labelledby="aTitle" hidden data-s="running">
+  <div class="stage" id="stage"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><div class="in"><img src="a/av0.webp" alt=""><div><b id="tTitle"></b><span id="tLine"></span></div></div></div>
+
+<script>
+/* ================= world ================= */
+const A=n=>"a/"+n+".webp";
+const REALMS=[
+  {id:"kitchen",name:"The Alchemist's Kitchen",short:"Kitchen",room:"the kitchen"},
+  {id:"living",name:"The Hearth Hall",short:"Hearth Hall",room:"the living room"},
+  {id:"bedroom",name:"The Dreaming Chamber",short:"Dreaming Chamber",room:"the bedroom"},
+  {id:"bath",name:"The Moonwater Sanctum",short:"Moonwater",room:"the bathroom"},
+  {id:"laundry",name:"The Textile Crypt",short:"Textile Crypt",room:"the laundry area"},
+  {id:"entry",name:"The Threshold",short:"Threshold",room:"the entryway"},
+  {id:"office",name:"The Scriptorium",short:"Scriptorium",room:"the desk"},
+  {id:"closet",name:"The Wardrobe Portal",short:"Wardrobe",room:"the closet"},
+  {id:"wander",name:"The Wandering Path",short:"Wandering",room:"the middle of the room"}
+];
+const R=Object.fromEntries(REALMS.map(r=>[r.id,r]));
+const SIZE={flicker:{name:"Flickering",label:"Flickering quest",min:2,icon:"p_flicker",hint:"One step, about 30 seconds to 2 minutes"},
+            steady:{name:"Steady",label:"Steady quest",min:5,icon:"p_steady",hint:"Small quests, roughly 3 to 10 minutes"},
+            blazing:{name:"Blazing",label:"Blazing quest",min:10,icon:"flame",hint:"Multi-step quests or room resets"}};
+const POWER=[
+  {id:"flicker",name:"Flickering",hint:"One-step quests, about 30 seconds to 2 minutes",icon:"p_flicker"},
+  {id:"steady",name:"Steady",hint:"Small quests, roughly 3 to 10 minutes",icon:"p_steady"},
+  {id:"blazing",name:"Blazing",hint:"Multi-step quests or room resets",icon:"flame"},
+  {id:"surprise",name:"Surprise me",hint:"The Oracle chooses the size too",icon:"orb"}
+];
+const MAGIC=[
+  {id:"hearthkeeper",name:"Hearthkeeper",hint:"Favors room-reset quests",icon:"k_living",fit:q=>q.size==="blazing"||q.realm==="living"},
+  {id:"alchemist",name:"Alchemist",hint:"Favors kitchen and bathroom quests",icon:"k_kitchen",fit:q=>q.realm==="kitchen"||q.realm==="bath"},
+  {id:"wayfinder",name:"Wayfinder",hint:"Favors roaming pickup quests",icon:"k_wander",fit:q=>q.realm==="wander"||(q.tags||[]).includes("pickup")},
+  {id:"archivist",name:"Archivist",hint:"Favors sorting and paperwork",icon:"k_office",fit:q=>q.realm==="office"||(q.tags||[]).includes("sort")},
+  {id:"familiar",name:"Familiar Friend",hint:"Favors care tasks",icon:"potion_heart",fit:q=>(q.tags||[]).includes("care")},
+  {id:"chaos",name:"Chaos Mage",hint:"Favors random quests",icon:"k_closet",fit:()=>false}
+];
+const FORMS=["Hooded figure with a crescent staff","Violet-haired witch","Golden-haired priestess with a star staff","Hooded rogue","Archer in green","Knight with a crescent shield","Antlered druid","Bard with a lute","Silver-haired sorceress","Dark-haired paladin","Pink-haired cleric with a heart staff","Goggled potion tinker","Hooded seer with a skull staff","Fire mage","Frost mage","Masked runner","Star sorceress with a gold mirror","Witch with a black cat"];
+const ladderFor=(how,realm)=>["Do one small piece of it","Move three objects","Pick up one object","Go stand in "+(R[realm]||R.wander).room];
+const SPELLS=[
+  {sid:"s1",t:"Return the Traveler",how:"Carry one out-of-place object back to its home.",realm:"wander",size:"flicker",tags:["pickup"],ladder:["Pick up one out-of-place object","Go stand next to it"]},
+  {sid:"s2",t:"Banish Three Scraps",how:"Throw away three pieces of trash.",realm:"wander",size:"flicker",tags:["pickup"],ladder:["Throw away one piece of trash","Find the nearest trash can"]},
+  {sid:"s3",t:"Wake the Automated Cauldron",how:"Start the dishwasher.",realm:"kitchen",size:"flicker",tags:[],ladder:["Close the dishwasher door","Stand by the dishwasher"]},
+  {sid:"s4",t:"Gather Five Dishes",how:"Put five dishes near the sink.",note:"They do not need to be washed yet.",realm:"kitchen",size:"flicker",tags:[],ladder:["Move two dishes to the sink","Pick up one dish","Stand by the sink"]},
+  {sid:"s5",t:"Hang One Garment",how:"Hang up or fold one piece of clothing.",realm:"bedroom",size:"flicker",tags:["pickup"],ladder:["Pick up one piece of clothing","Stand by the clothes"]},
+  {sid:"s6",t:"Tend the Familiar",how:"Refill the cats' water bowl.",realm:"living",size:"flicker",tags:["care"],ladder:["Pick up the water bowl","Stand by the bowl"]},
+  {sid:"s7",t:"Feed the Green Ones",how:"Water one plant.",realm:"living",size:"flicker",tags:["care"],ladder:["Fill a cup with water","Stand by a plant"]},
+  {sid:"s8",t:"Clear a Counter Square",how:"Put away or discard anything inside one hand-sized area.",realm:"kitchen",size:"steady",tags:["surface"],ladder:["Move three objects off the counter","Pick up one object from the counter","Stand near the counter"]},
+  {sid:"s9",t:"Disperse the Laundry Council",how:"Put visible laundry into one basket.",realm:"bedroom",size:"steady",tags:["pickup"],ladder:["Put three pieces of clothing in the basket","Pick up one piece of clothing","Bring the basket into the room"]},
+  {sid:"s10",t:"Polish the Basin",how:"Wipe the bathroom sink and faucet.",realm:"bath",size:"steady",tags:["surface"],ladder:["Wipe just the faucet","Wet a cloth","Stand at the sink"]},
+  {sid:"s11",t:"Clear the Threshold",how:"Pair up or put away the shoes by the door.",realm:"entry",size:"steady",tags:["pickup"],ladder:["Pair up two shoes","Pick up one shoe","Stand by the door"]},
+  {sid:"s12",t:"Settle the Scriptorium",how:"Sort the papers on the desk into keep, act and recycle.",realm:"office",size:"steady",tags:["sort"],ladder:["Sort five papers","Recycle one piece of paper","Sit at the desk"]},
+  {sid:"s13",t:"Wipe the Feasting Table",how:"Wipe the table for two minutes.",realm:"kitchen",size:"steady",tags:["surface"],ladder:["Wipe one corner of the table","Wet a cloth","Stand by the table"]},
+  {sid:"s14",t:"Restore the Hearth Hall",how:"Reset the living room: blankets folded, cups out, surfaces clear.",realm:"living",size:"blazing",tags:["surface"],ladder:["Fold the blankets","Carry the cups to the kitchen","Pick up one cup","Stand in the living room"]},
+  {sid:"s15",t:"The Cauldron Cycle",how:"Load the dishwasher, start it, and wipe the counters.",realm:"kitchen",size:"blazing",tags:["surface"],ladder:["Load the dishwasher","Load five dishes","Open the dishwasher"]},
+  {sid:"s16",t:"Ferry the Gathering Vessel",how:"Carry a laundry basket to the machine and start a load.",realm:"laundry",size:"blazing",tags:[],ladder:["Carry the basket to the machine","Pick up the basket","Stand by the basket"]},
+  {sid:"s17",t:"Purge the Cold Pantry",how:"Throw out anything expired from one fridge shelf.",realm:"kitchen",size:"blazing",tags:["sort"],ladder:["Check five items on one shelf","Check one item","Open the fridge"]},
+  {sid:"s18",t:"Open the Wardrobe Portal",how:"Choose three clothes to donate and bag them.",realm:"closet",size:"blazing",tags:["sort"],ladder:["Choose one piece to donate","Hold one piece and decide","Open the closet"]}
+];
+
+const RHYTHMS=[["daily","Every day"],["weekdays","Weekdays"],["weekends","Weekends"],["w0","Every Sunday"],["w1","Every Monday"],["w2","Every Tuesday"],["w3","Every Wednesday"],["w4","Every Thursday"],["w5","Every Friday"],["w6","Every Saturday"],["e2","Every other day"],["e3","Every 3 days"],["e7","Once a week, any day"],["e14","Every two weeks"]];
+const RHY=Object.fromEntries(RHYTHMS);
+const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const RBOOK=[
+  {bid:"b1",t:"The Closing Ritual",how:"Clear one counter square, start the dishwasher, set out tomorrow's things.",realm:"kitchen",size:"steady",rhythm:"daily",closing:true,tags:["surface"],ladder:["Start the dishwasher","Set out one thing for tomorrow","Stand in the kitchen"]},
+  {bid:"b2",t:"Wake the Automated Cauldron",how:"Start the dishwasher.",realm:"kitchen",size:"flicker",rhythm:"daily",tags:[],ladder:["Close the dishwasher door","Stand by the dishwasher"]},
+  {bid:"b3",t:"Tend the Familiar",how:"Fresh water and food for the cats.",realm:"living",size:"flicker",rhythm:"daily",tags:["care"],ladder:["Refill the water bowl","Pick up the bowl","Stand by the bowls"]},
+  {bid:"b4",t:"The Textile Tide",how:"Wash, dry and put away one load of laundry.",realm:"laundry",size:"blazing",rhythm:"w0",tags:[],ladder:["Start one load","Carry the basket to the machine","Pick up the basket"]},
+  {bid:"b5",t:"Banish the Bin",how:"Take the trash and recycling out.",realm:"wander",size:"flicker",rhythm:"w3",tags:["pickup"],ladder:["Tie up the trash bag","Stand by the bin"]},
+  {bid:"b6",t:"Feed the Green Ones",how:"Water the houseplants.",realm:"living",size:"flicker",rhythm:"e3",tags:["care"],ladder:["Water one plant","Fill a cup with water"]},
+  {bid:"b7",t:"Restore the Basin",how:"Wipe the bathroom sink, faucet and mirror.",realm:"bath",size:"steady",rhythm:"e7",tags:["surface"],ladder:["Wipe the faucet","Wet a cloth","Stand at the sink"]},
+  {bid:"b8",t:"Fresh Linens for the Dreaming Chamber",how:"Change the bed sheets.",realm:"bedroom",size:"blazing",rhythm:"e14",tags:[],ladder:["Take the old sheets off","Pull back the blanket","Stand by the bed"]}
+];
+const ALLYN=["Mothwick","Violet","Solenne","Rook","Fennick","Dame Ilse","Bramble","Pip","Wren","Corvin","Rosalind","Tinker Moss","Old Hollow","Ember","Rime","Dusk","Selune","Mabel and her cat"];
+const ALLY_LINES=["{n} is sorting a Drawer of Unsorted Fate.","{n} is folding a cloak. Badly, but with conviction.","{n} glances over. Still here.","{n} hums a working song.","{n} returns a spoon to its people.","{n} is dusting a shelf you can't see.","{n} gives you a small nod.","{n} has found a sock. The council grows smaller."];
+/* relics: revealed / partial (a hint) / hidden */
+const RELICS=[
+  {id:"first_spark",name:"The First Spark",show:"revealed",hint:"Begin any quest",icon:"r_begun",need:1,val:s=>s.begun},
+  {id:"merciful",name:"Merciful Magic",show:"revealed",hint:"Make a quest smaller",icon:"r_tiny",need:1,val:s=>s.smaller},
+  {id:"kindling",name:"Kindling",show:"revealed",hint:"Complete a Flickering quest",icon:"lantern",need:1,val:s=>s.flickerDone},
+  {id:"safe_return",name:"The Returning Key",show:"partial",hint:"Continue a journey you once paused",req:"Resume a paused quest",icon:"key",need:1,val:s=>s.resumed},
+  {id:"gentle_exit",name:"The Gentle Exit",show:"partial",hint:"Know when the flame is spent",req:"Stop when the timer ends",icon:"bluemoon",need:1,val:s=>s.gentle},
+  {id:"wayfinder",name:"Wayfinder",show:"partial",hint:"Find a better path",req:"Swap an unsuitable quest",icon:"r_beacon",need:1,val:s=>s.swapped},
+  {id:"ward3",name:"The Ward Strengthens",show:"partial",hint:"Return to the realm, again and again",req:"Complete three quests",icon:"r_ward",need:3,val:s=>s.done},
+  {id:"good_enough",name:"Good Enough",show:"hidden",req:"Mark a task sufficiently complete, or record partial progress",icon:"crescent",need:1,val:s=>s.enough},
+  {id:"thread",name:"Unbroken Thread",show:"hidden",req:"Return after time away",icon:"r_council",need:1,val:s=>s.returned},
+  {id:"breathe",name:"Room to Breathe",show:"hidden",req:"Clear one usable surface",icon:"crystal",need:1,val:s=>s.surface},
+  {id:"council",name:"The Scholar's Lamp",show:"hidden",req:"Complete ten quests",icon:"scholar",need:10,val:s=>s.done},
+  {id:"ember",name:"Ember Heart",show:"partial",hint:"Gather Sparks until it wakes",req:"Earn 100 Sparks",icon:"gem",need:100,val:s=>s.sparks},
+  {id:"keeper",name:"Keeper of the Hearth",show:"hidden",req:"Complete fifty quests",icon:"r_keeper",need:50,val:s=>s.done},
+  {id:"fellowship",name:"Fellowship",show:"partial",hint:"Some quests are lighter when shared",req:"Finish a quest with an ally",icon:"heart",need:1,val:s=>s.coop},
+  {id:"rituals",name:"Keeper of Rituals",show:"partial",hint:"Tend what returns",req:"Complete five rituals",icon:"collector",need:5,val:s=>s.rituals}
+];
+
+/* ================= state ================= */
+const KEY="chorecraft-v1",OLDKEY="hearthward-quest-v1";
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const blank=()=>({v:1,quests:[],nextId:1,power:null,powerDay:null,magic:null,form:0,sound:false,motion:true,reveal:false,
+  sparks:0,c:{begun:0,done:0,smaller:0,flickerDone:0,resumed:0,gentle:0,swapped:0,enough:0,returned:0,surface:0,rituals:0,coop:0},rituals:[],nextRid:1,nowRid:null,
+  earned:[],wards:{},lastDoneAt:0,lastSeenAt:0,nowId:null,nowSid:null,active:null,updatedAt:0});
+let S=blank();
+function migrate(o){ // from Hearthward Quest saves
+  const s=blank();if(!o||!Array.isArray(o.items))return null;
+  const map={tiny:"flicker",side:"steady",main:"blazing"};
+  o.items.forEach(it=>{if(/\(example\)$/.test(it.t))return;s.quests.push({id:s.nextId++,t:it.t,how:"",realm:it.realm||"wander",size:map[it.type]||"steady",tags:[],ladder:ladderFor("",it.realm),level:0,d:!!it.d,later:false})});
+  s.sparks=(o.total||0)*10;s.c.done=o.total||0;s.form=o.avatar||0;s.sound=!!o.sound;s.lastDoneAt=o.lastReturnAt||0;s.lastSeenAt=o.lastSeenAt||0;return s;
+}
+try{const raw=JSON.parse(localStorage.getItem(KEY));if(raw&&raw.v)S=Object.assign(blank(),raw);else{const m=migrate(JSON.parse(localStorage.getItem(OLDKEY)));if(m)S=m}}catch(e){}
+S.c=Object.assign(blank().c,S.c||{});if(!Array.isArray(S.rituals))S.rituals=[];if(!S.nextRid)S.nextRid=1;
+const $=id=>document.getElementById(id);
+const el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
+const img=(n,cls,alt)=>{const i=document.createElement("img");i.className=cls==null?"ic":cls;i.src=A(n);i.alt=alt||"";return i};
+
+/* ---------- saving: this device first, then your private cloud save ---------- */
+let cloudRef=null,cloudT=null;
+const setSync=t=>{$("sync").textContent=t};
+function save(local){S.updatedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(local||!cloudRef)return;clearTimeout(cloudT);setSync("Saving…");
+  cloudT=setTimeout(()=>{cloudRef.set(JSON.parse(JSON.stringify(S))).then(()=>setSync("Saved to your save file")).catch(()=>setSync("Saved on this device only"))},700)}
+(async()=>{try{
+  if(!window.claude||!window.claude.use){setSync("Saved on this device only");return}
+  const [db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);
+  if(!db||!user){setSync("Saved on this device only");return}
+  const uid=await user.id();if(!uid){setSync("Saved on this device only");return}
+  const col=db.collection("data/users/"+uid),ref=col.doc("chorecraft");
+  const snap=await ref.get();let d=snap.exists?snap.data():null;
+  if(!d&&!S.quests.length&&!S.c.begun){try{const old=await col.doc("quest").get();if(old.exists){const m=migrate(old.data());if(m)d=m}}catch(e){}}
+  cloudRef=ref;
+  if(d&&d.v&&(d.updatedAt||0)>=(S.updatedAt||0)){S=Object.assign(blank(),JSON.parse(JSON.stringify(d)));S.c=Object.assign(blank().c,S.c||{});if(!Array.isArray(S.rituals))S.rituals=[];try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}renderAll();resumeActive();setSync("Save file loaded")}
+  else save();
+}catch(e){setSync("Saved on this device only")}})();
+
+/* ---------- sound: soft, only when turned on, never an alarm ---------- */
+let ac=null;
+function blip(notes){if(!S.sound)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();let t=ac.currentTime;notes.forEach(([f,d])=>{const o=ac.createOscillator(),g=ac.createGain();o.type="square";o.frequency.value=f;g.gain.setValueAtTime(.04,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+d);t+=d*.8})}catch(e){}}
+const SFX={tap:[[440,.05]],begin:[[523,.08],[659,.12]],done:[[523,.1],[659,.1],[784,.1],[1047,.25]],relic:[[784,.1],[988,.1],[1319,.3]],soft:[[659,.2],[523,.3]]};
+
+/* ---------- toast ---------- */
+let tq=[],tBusy=false;
+function toast(title,line,face){tq.push([title,line,face]);if(!tBusy)nextToast()}
+function nextToast(){if(!tq.length){$("toast").classList.remove("show");tBusy=false;return}tBusy=true;const [t,l,f]=tq.shift();
+  $("tTitle").textContent=t;$("tLine").textContent=l;$("toast").querySelector("img").src=A(f||"av0");$("toast").classList.add("show");setTimeout(()=>{$("toast").classList.remove("show");setTimeout(nextToast,260)},2600)}
+
+/* ================= ritual timing ================= */
+const dayNo=d=>{const [y,m,dd]=d.split("-").map(Number);return Math.round(Date.UTC(y,m-1,dd)/864e5)};
+const dateOf=n=>{const d=new Date(n*864e5);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0")};
+const dow=n=>new Date(n*864e5).getUTCDay();
+function onDay(r,n){const h=r.rhythm;if(h==="daily")return true;if(h==="weekdays"){const w=dow(n);return w>0&&w<6}if(h==="weekends"){const w=dow(n);return w===0||w===6}
+  if(h[0]==="w")return dow(n)===+h.slice(1);if(h[0]==="e"){const N=+h.slice(1);return !r.lastDone||n-dayNo(r.lastDone)>=N}return false}
+function isDue(r){const n=dayNo(today());if(r.lastDone===today()||r.skip===today())return false;return onDay(r,n)}
+function wasReset(r){ // a due day passed without it: say so kindly, never "overdue"
+  const n=dayNo(today()),born=dayNo(r.created||today());
+  if(r.rhythm[0]==="e"){const N=+r.rhythm.slice(1);return r.lastDone?n-dayNo(r.lastDone)>N:n-born>N}
+  for(let k=n-1;k>=Math.max(born,n-14);k--){if(onDay(r,k))return !r.lastDone||dayNo(r.lastDone)<k}return false}
+function nextDay(r){const n=dayNo(today());for(let k=1;k<=30;k++){const t=n+k;const ok=r.rhythm[0]==="e"?(k>=(+r.rhythm.slice(1)-(r.lastDone?n-dayNo(r.lastDone):0))):onDay(r,t);if(ok)return k===1?"tomorrow":k<7?DAYS[dow(t)]:"in "+k+" days"}return "soon"}
+const ritual=rid=>S.rituals.find(r=>r.rid===rid);
+function adoptRitual(r){const ex=S.quests.find(q=>q.rid===r.rid&&!q.d);if(ex){ex.later=false;return ex}
+  const q={id:S.nextId++,rid:r.rid,t:r.t,how:r.how,realm:r.realm,size:r.size,tags:(r.tags||[]).slice(),ladder:(r.ladder&&r.ladder.length?r.ladder:ladderFor(r.how,r.realm)).slice(),level:0,d:false,later:false};S.quests.push(q);return q}
+const adoptAny=it=>it.spell?adopt(it.q):it.ritual?adoptRitual(it.q):it.q;
+
+/* ================= rules ================= */
+const fits=(q,p)=>p==="flicker"?q.size==="flicker":p==="steady"?q.size!=="blazing":true;
+const powerNow=()=>S.powerDay===today()?S.power:null;
+const quest=id=>S.quests.find(q=>q.id===id);
+const spell=sid=>SPELLS.find(s=>s.sid===sid);
+const open=()=>S.quests.filter(q=>!q.d);
+const magic=()=>MAGIC.find(m=>m.id===S.magic);
+function score(q){let s=Math.random();const m=magic();if(m&&m.id==="chaos")return Math.random()*3;if(m&&m.fit(q))s+=2;if(S.power==="blazing"&&q.size==="blazing")s+=1;if(S.power==="steady"&&q.size==="steady")s+=.6;return s}
+function pickNow(exclude){
+  const p=powerNow();if(!p)return;
+  const eff=p==="surprise"?null:p;
+  const ok=q=>!q.later&&(eff?fits(q,eff):true)&&q.id!==exclude;
+  const mine=open().filter(q=>ok(q)&&!q.rid);
+  const late=new Date().getHours()>=17;
+  const rits=S.rituals.filter(r=>isDue(r)&&(eff?fits(r,eff):true)&&r.rid!==exclude&&!S.quests.some(q=>q.rid===r.rid&&q.id===exclude));
+  const cand=mine.map(q=>({k:"q",q,s:score(q)})).concat(rits.map(r=>({k:"r",q:r,s:score(r)+1.2+(r.closing&&late?2:0)})));
+  S.nowRid=null;
+  if(cand.length){cand.sort((a,b)=>b.s-a.s);const c=cand[0];if(c.k==="q"){S.nowId=c.q.id;S.nowSid=null}else{S.nowId=null;S.nowSid=null;S.nowRid=c.q.rid}return}
+  const inLog=new Set(S.quests.map(q=>q.sid).filter(Boolean));
+  const pool=SPELLS.filter(s=>!inLog.has(s.sid)&&(eff?fits(s,eff):true)&&s.sid!==exclude);
+  const use=pool.length?pool:SPELLS.filter(s=>(eff?fits(s,eff):true));
+  use.sort((a,b)=>score(b)-score(a));S.nowId=null;S.nowSid=use[0]?use[0].sid:null;
+}
+function nowItem(){
+  if(S.active&&quest(S.active.qid)&&S.active.status!=="done")return {q:quest(S.active.qid),paused:true};
+  let q=S.nowId&&quest(S.nowId);if(q&&!q.d&&!q.later)return {q};
+  const rr=S.nowRid&&ritual(S.nowRid);if(rr&&isDue(rr))return {q:rr,ritual:true};
+  const sp=S.nowSid&&spell(S.nowSid);if(sp)return {q:sp,spell:true};
+  pickNow();q=S.nowId&&quest(S.nowId);if(q)return {q};const r2=S.nowRid&&ritual(S.nowRid);if(r2)return {q:r2,ritual:true};const s2=S.nowSid&&spell(S.nowSid);return s2?{q:s2,spell:true}:null;
+}
+function adopt(sp){const ex=S.quests.find(q=>q.sid===sp.sid&&!q.d);if(ex){ex.later=false;return ex}
+  const q={id:S.nextId++,sid:sp.sid,t:sp.t,how:sp.how,note:sp.note||"",realm:sp.realm,size:sp.size,tags:sp.tags.slice(),ladder:sp.ladder.slice(),level:0,d:false,later:false};S.quests.push(q);return q}
+const shown=q=>q.level>0?{t:q.ladder[q.level-1],how:"A smaller step of “"+q.t+".” That still counts."}:{t:q.t,how:q.how||""};
+function glow(){if(!S.lastDoneAt)return 2;const h=(Date.now()-S.lastDoneAt)/36e5;return h<24?5:h<48?4:h<96?3:h<168?2:1}
+const GLOW=["","The hearth is low. One Flickering quest relights it.","The hearth is dim and waiting. One small quest relights it.","The hearth is warm.","The hearth glows.","The hearth burns bright."];
+const LAMPF=["","grayscale(.9) brightness(.4)","grayscale(.6) brightness(.6)","none","brightness(1.1) drop-shadow(0 0 6px #f7b955)","brightness(1.2) drop-shadow(0 0 12px #ffd68a)"];
+const wardLit=r=>S.wards[r]&&Date.now()-S.wards[r]<7*864e5;
+function stats(){return Object.assign({},S.c,{sparks:S.sparks})}
+function checkRelics(collect){const s=stats();RELICS.forEach(r=>{if(!S.earned.includes(r.id)&&r.val(s)>=r.need){S.earned.push(r.id);blip(SFX.relic);if(collect)pendingRelics.push(r);else toast("Relic recovered: "+r.name,r.hint||r.req,r.icon)}})}
+let pendingRelics=[];
+function gain(n){S.sparks+=n}
+
+/* ================= render: Grimoire ================= */
+function renderCheckin(){
+  const p=powerNow(),box=$("power");box.innerHTML="";
+  POWER.forEach(o=>{const b=el("button","choice");b.setAttribute("aria-pressed",p===o.id);b.append(img(o.icon));const d=el("div");d.append(el("b",null,o.name),el("span",null,o.hint));b.append(d);
+    b.onclick=()=>{S.power=o.id;S.powerDay=today();S.nowId=S.nowSid=null;pickNow();blip(SFX.tap);save();renderAll();$("now").scrollIntoView({block:"nearest",behavior:S.motion?"smooth":"auto"})};box.append(b)});
+  const done=!!p;$("checkin").classList.toggle("done",done);$("today").hidden=!done;$("ciLede").hidden=done;
+  if(done){const o=POWER.find(x=>x.id===p);$("todayIc").src=A(o.icon);$("todayTxt").textContent="Today: "+o.name;$("todayHint").textContent=o.hint}
+}
+$("changePower").onclick=()=>{$("checkin").classList.remove("done");$("today").hidden=true;$("ciLede").hidden=false;$("power").querySelector("button").focus()};
+
+let nowMin=null,custom=false;
+function renderNow(){
+  const body=$("nowBody");body.innerHTML="";
+  if(!powerNow()){body.append(el("p","waiting","Choose a flame above and one quest will appear here."));return}
+  const it=nowItem();
+  if(!it){body.append(el("p","waiting","Every quest that fits today's flame is done. The realm is already lighter."));return}
+  const q=it.q,sh=(it.spell||it.ritual)?{t:q.t,how:q.how}:shown(q),r=R[q.realm]||R.wander,sz=SIZE[q.size];
+  const isRit=it.ritual||(q.rid&&ritual(q.rid));
+  const kind=el("div","kind");kind.append(img(sz.icon),el("span",null,isRit?(q.closing||(ritual(q.rid)||{}).closing?"Closing Ritual":"Ritual · "+RHY[(it.ritual?q:ritual(q.rid)).rhythm]):sz.label),el("span",null,"· "+r.name));if(it.paused)kind.append(el("span","paused-tag","Paused"));
+  const h=el("h2",null,sh.t);h.id="nowTitle";
+  const how=el("p","how",sh.how);
+  body.append(kind,h,how);if(q.note&&!(q.level>0))body.append(el("p","muted",q.note));
+  if(it.paused){
+    const a=el("div","actions");const go=el("button","btn primary","Resume quest");go.onclick=()=>{resume();openActive()};a.append(go);body.append(a);
+    const l=el("div","links");const ab=el("button","lnk","Set it aside");ab.onclick=()=>{S.active=null;save();renderAll();toast("Progress preserved","The quest will wait in your log.","e_good")};l.append(ab);body.append(l);return}
+  // duration
+  const base=nowMin||(q.level>0?2:sz.min);
+  const durs=el("div","durs");durs.style.marginTop="14px";durs.append(el("span","muted","Focus Flame:"));
+  [2,5,10].forEach(m=>{const b=el("button","dur",m+" min");b.setAttribute("aria-pressed",!custom&&base===m);b.onclick=()=>{custom=false;nowMin=m;renderNow()};durs.append(b)});
+  const cb=el("button","dur","Custom");cb.setAttribute("aria-pressed",custom);cb.onclick=()=>{custom=true;nowMin=nowMin||base;renderNow();setTimeout(()=>$("customMin")&&$("customMin").focus(),0)};durs.append(cb);
+  if(custom){const inp=el("input");inp.id="customMin";inp.type="number";inp.min=1;inp.max=60;inp.value=base;inp.setAttribute("aria-label","Minutes");inp.oninput=()=>{nowMin=Math.max(1,Math.min(60,+inp.value||1))};durs.append(inp,el("span","muted","min"))}
+  body.append(durs);
+  const a=el("div","actions");
+  const go=el("button","btn primary","Begin "+(custom?nowMin:base)+"-minute quest");go.onclick=()=>begin(it,custom?nowMin:base);
+  const cant=el("button","lnk cant","I can't start");cant.onclick=()=>cantStart(it);
+  a.append(go,cant);body.append(a);
+  const l=el("div","links");
+  const sw=el("button","lnk","Choose another");sw.onclick=()=>{pickNow(it.spell?q.sid:it.ritual?q.rid:q.id);nowMin=null;custom=false;blip(SFX.tap);save();renderNow()};
+  const sm=el("button","lnk","Make it smaller");sm.onclick=()=>{const qq=adoptAny(it);shrink(qq);S.nowId=qq.id;S.nowSid=null;save();renderAll()};
+  const al=el("button","lnk","Summon an Ally");al.onclick=()=>summon(it,custom?nowMin:base);
+  l.append(sw,sm,al);
+  if(it.ritual){const nt=el("button","lnk","Not today");nt.onclick=()=>{q.skip=today();pickNow(q.rid);save();renderAll();toast("The ritual rests","It returns on its next day. No penalty.","e_good")};l.append(nt)}
+  else if(!it.spell){const nt=el("button","lnk","Not today");nt.onclick=()=>{q.later=true;pickNow(q.id);save();renderAll();toast("Moved to Later","No penalty. It will be there when you want it.","e_good")};l.append(nt)}
+  body.append(l);
+}
+function qcard(q,opts){
+  const li=el("li","qcard"+(q.d?" done":""));const sh=opts.spell?{t:q.t,how:q.how}:shown(q);const sz=SIZE[q.size];
+  li.append(img(sz.icon,"ic",sz.name));
+  const mid=el("div");mid.append(el("b",null,sh.t),el("span",null,(sh.how?sh.how+" ":"")+"· "+(R[q.realm]||R.wander).short));li.append(mid);
+  const acts=el("div","acts");
+  if(!q.d){const b=el("button","btn","+ Begin");b.onclick=()=>begin(opts.spell?{q,spell:true}:{q},opts.spell?SIZE[q.size].min:(q.level>0?2:SIZE[q.size].min));acts.append(b)}
+  (opts.links||[]).forEach(([t,fn])=>{const l=el("button","lnk",t);l.onclick=fn;acts.append(l)});
+  li.append(acts);return li;
+}
+function renderStack(){
+  const p=powerNow(),eff=p&&p!=="surprise"?p:null,nowQ=nowItem();const nowId=nowQ&&!nowQ.spell?nowQ.q.id:null;
+  const openQ=open().filter(q=>q.id!==nowId);
+  const fitQ=openQ.filter(q=>!q.later&&(!eff||fits(q,eff)));
+  const next=fitQ.slice(0,3),later=openQ.filter(q=>!next.includes(q));
+  const nl=$("nextList");nl.innerHTML="";
+  if(!next.length)nl.append(el("li","empty",open().length?"Nothing else fits today's flame. Larger quests wait in Later.":"Your log is empty. Begin a starter spell or write your own quest."));
+  next.forEach(q=>nl.append(qcard(q,{links:[["Not today",()=>{q.later=true;save();renderAll()}]]})));
+  const ll=$("laterList");ll.innerHTML="";$("laterSum").textContent="Later ("+later.length+")";
+  if(!later.length)ll.append(el("li","empty","Nothing waiting."));
+  later.forEach(q=>ll.append(qcard(q,{links:[["Bring back",()=>{q.later=false;save();renderAll()}],["Remove",()=>{keepUndo("Removed “"+q.t+"”");S.quests=S.quests.filter(x=>x!==q);save();renderAll()}]]})));
+  $("spellFold").open=$("spellFold").open||!open().length;const sl=$("spellList");sl.innerHTML="";const inLog=new Set(S.quests.filter(q=>!q.d).map(q=>q.sid));
+  SPELLS.filter(s=>!inLog.has(s.sid)&&(!eff||fits(s,eff))).slice(0,6).forEach(s=>sl.append(qcard(s,{spell:true,links:[["Save for later",()=>{const q=adopt(s);q.later=true;save();renderAll();toast("Saved for later",s.t,"e_good")}]]})));
+}
+function renderHearth(){
+  const g=glow();$("lamp").style.filter=LAMPF[g];$("barLamp").style.filter=LAMPF[g];$("glowTxt").textContent=GLOW[g];
+  // next relic that counts sparks or quests
+  const s=stats();const cand=RELICS.filter(r=>!S.earned.includes(r.id)&&r.need>1).map(r=>({r,left:r.need-r.val(s)})).sort((a,b)=>a.left-b.left)[0];
+  const toward=cand?(cand.r.id==="ember"?cand.left+" Sparks until a relic awakens.":cand.left+" more quest"+(cand.left>1?"s":"")+" until a relic awakens."):"Every counted relic is awake.";
+  const pct=cand&&cand.r.id==="ember"?Math.min(100,S.sparks/cand.r.need*100):Math.min(100,(S.sparks%100));
+  $("sparkFill").style.width=pct+"%";$("sparkTxt").textContent=S.sparks;$("barSparks").textContent=S.sparks;
+  const it=powerNow()&&nowItem();const nr=it?(R[it.q.realm]||R.wander):null;
+  const nu=$("nextUp");nu.innerHTML="";
+  if(nr&&!wardLit(nr.id)){nu.append(el("b",null,"Next: relight a ward"),document.createTextNode("Complete any quest in "+nr.name+" and its lantern wakes. "+toward))}
+  else{nu.append(el("b",null,"Next"),document.createTextNode(toward))}
+  const w=$("wards");w.innerHTML="";
+  REALMS.forEach(r=>{const lit=wardLit(r.id);const d=el("div","ward"+(lit?" lit":""));d.append(img("k_"+r.id,"ic",""),el("span",null,r.short+(lit?" · lit":"")));d.title=r.name+(lit?": ward lit this week":": ward waiting");w.append(d)});
+}
+let cabinetOpen=false;
+function relicCard(r){
+  const s=stats(),on=S.earned.includes(r.id);const st=on?"on":(S.reveal?"revealed":r.show);
+  const d=el("div","relic "+(on?"on":st==="partial"?"partial":st==="hidden"?"hidden":"rev"));
+  d.append(img(r.icon,"ic",""));const t=el("div");
+  const name=st==="hidden"&&!on?"Unknown Relic":r.name;
+  const line=on?(r.hint||r.req):st==="hidden"?"Its conditions remain concealed.":S.reveal?(r.req||r.hint):r.hint;
+  t.append(el("b",null,name),el("p",null,line));
+  if(on)t.append(el("div","earned","✦ Recovered"));
+  else if(st!=="hidden"&&r.need>1){const pips=el("div","pips");pips.setAttribute("aria-label",Math.min(r.val(s),r.need)+" of "+r.need);const n=Math.min(10,r.need),f=Math.round(Math.min(r.val(s),r.need)/r.need*n);for(let i=0;i<n;i++)pips.append(el("i",i<f?"f":""));t.append(pips)}
+  d.append(t);return d;
+}
+function renderRelics(){
+  const box=$("relics");box.innerHTML="";box.classList.toggle("all",cabinetOpen);
+  const s=stats();
+  if(cabinetOpen){RELICS.forEach(r=>box.append(relicCard(r)))}
+  else{const next=RELICS.filter(r=>!S.earned.includes(r.id)&&(r.show!=="hidden"||S.reveal)).sort((a,b)=>(b.val(s)/b.need)-(a.val(s)/a.need)).slice(0,3);
+    if(!next.length)box.append(el("p","muted","Every visible relic is recovered. Open the cabinet to see the rest."));next.forEach(r=>box.append(relicCard(r)))}
+  $("relicTitle").textContent="Relics · "+S.earned.length+" of "+RELICS.length;
+  $("cabinet").textContent=cabinetOpen?"Show only the next few":"View relic cabinet";$("cabinet").setAttribute("aria-expanded",cabinetOpen);
+  $("reveal").textContent=S.reveal?"Keep requirements a mystery":"Show all unlock requirements";$("reveal").setAttribute("aria-pressed",S.reveal);
+}
+$("cabinet").onclick=()=>{cabinetOpen=!cabinetOpen;renderRelics()};
+$("reveal").onclick=()=>{S.reveal=!S.reveal;save();renderRelics()};
+function renderYou(){
+  const f=$("forms");if(!f.children.length)FORMS.forEach((n,i)=>{const b=el("button","form");b.setAttribute("aria-label",n);b.title=n;b.append(img("av"+i,"",""));b.onclick=()=>{S.form=i;save();renderYou();blip(SFX.tap)};f.append(b)});
+  [...f.children].forEach((b,i)=>b.setAttribute("aria-pressed",i===S.form));
+  $("formLabel").textContent="✦ Selected: "+FORMS[S.form];$("barAv").src=A("av"+S.form);
+  const m=$("magic");m.innerHTML="";MAGIC.forEach(o=>{const b=el("button","choice");b.setAttribute("aria-pressed",S.magic===o.id);b.append(img(o.icon));const d=el("div");d.append(el("b",null,o.name),el("span",null,o.hint));b.append(d);
+    b.onclick=()=>{S.magic=S.magic===o.id?null:o.id;save();renderYou();blip(SFX.tap)};m.append(b)});
+}
+function renderStats(){
+  const st=$("stats");st.innerHTML="";
+  [["Quests begun",S.c.begun],["Quests complete",S.c.done],["Sparks earned",S.sparks],["Made smaller",S.c.smaller],["Relics",S.earned.length],["Wards lit this week",REALMS.filter(r=>wardLit(r.id)).length],["Rituals tended",S.c.rituals],["Co-op quests",S.c.coop]].forEach(([l,v])=>{const d=el("div","stat");d.append(el("b",null,String(v)),el("span",null,l));st.append(d)});
+  $("sound").textContent=S.sound?"On":"Off";$("sound").setAttribute("aria-pressed",S.sound);
+  $("motion").textContent=S.motion?"On":"Still";$("motion").setAttribute("aria-pressed",S.motion);document.body.classList.toggle("still",!S.motion);
+}
+function renderAll(){renderCheckin();renderNow();renderStack();renderRituals();renderHearth();renderRelics();renderYou();renderStats()}
+
+/* ================= actions ================= */
+function shrink(q){if(q.level<q.ladder.length){q.level++;S.c.smaller++;checkRelics();blip(SFX.tap);return true}return false}
+let undoSnap=null,undoT=null;
+function keepUndo(label){undoSnap=JSON.stringify(S.quests);$("undoTxt").textContent=label;$("undoRow").hidden=false;clearTimeout(undoT);undoT=setTimeout(()=>{$("undoRow").hidden=true;undoSnap=null},15000)}
+$("undoBtn").onclick=()=>{if(!undoSnap)return;S.quests=JSON.parse(undoSnap);undoSnap=null;$("undoRow").hidden=true;save();renderAll();toast("Time rewound","The quests have returned.","e_happy")};
+function arm(btn,label,armed,fn){if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=label;fn();return}btn.dataset.armed="1";btn.textContent=armed;setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=label}},3500)}
+$("clearDone").onclick=e=>arm(e.currentTarget,"Release","Tap again",()=>{const n=S.quests.filter(q=>q.d).length;if(!n){toast("Nothing to release","Finished quests will gather here.","e_sweat");return}keepUndo(n+" finished quest"+(n>1?"s":"")+" released");S.quests=S.quests.filter(q=>!q.d);save();renderAll()});
+$("sound").onclick=()=>{S.sound=!S.sound;save();renderStats();blip(SFX.tap)};
+$("motion").onclick=()=>{S.motion=!S.motion;save();renderStats()};
+$("cRealm").innerHTML=REALMS.map(r=>`<option value="${r.id}">${r.name}</option>`).join("");
+let composeAct="now";
+$("compose").querySelectorAll("button[type=submit]").forEach(b=>b.onclick=()=>{composeAct=b.dataset.act});
+$("compose").onsubmit=e=>{e.preventDefault();const t=$("cTitle").value.trim(),how=$("cHow").value.trim();if(!t&&!how){$("cTitle").focus();return}
+  const realm=$("cRealm").value,size=$("cSize").value;
+  const q={id:S.nextId++,t:t||how,how:t?how:"",realm,size,tags:[],ladder:ladderFor(how,realm),level:0,d:false,later:composeAct==="later"};S.quests.push(q);
+  $("cTitle").value="";$("cHow").value="";
+  if(composeAct==="now"){S.nowId=q.id;S.nowSid=null;save();begin({q},SIZE[size].min)}else{save();renderAll();toast("Saved for later",q.t,"e_good")}};
+
+/* ================= Active Quest ================= */
+let tick=null;
+function begin(it,min,ally){
+  const q=adoptAny(it);q.later=false;
+  S.active={qid:q.id,dur:min*60,endAt:Date.now()+min*60*1000,left:min*60,status:"running",ally:ally||null,line:0};
+  S.nowId=q.id;S.nowRid=null;S.nowSid=null;S.c.begun++;gain(2);checkRelics();nowMin=null;custom=false;
+  blip(SFX.begin);save();openActive();
+}
+function openActive(){$("active").hidden=false;document.body.classList.add("locked");drawActive();clearInterval(tick);tick=setInterval(step,1000)}
+function closeActive(){$("active").hidden=true;document.body.classList.remove("locked");clearInterval(tick);renderAll()}
+function leftNow(){const a=S.active;if(!a)return 0;return a.status==="running"?Math.max(0,Math.round((a.endAt-Date.now())/1000)):a.left}
+function step(){const a=S.active;if(!a||a.status!=="running")return;const l=leftNow();
+  if(l<=0){a.status="spent";a.left=0;blip(SFX.soft);save();drawActive();return}
+  const c=$("aClock");if(c)c.textContent=fmt(l);const b=$("aBurn");if(b)b.style.width=(l/a.dur*100)+"%";
+  if(a.ally){const el2=$("allyLine");const elapsed=a.dur-l;
+    if(!a.half&&l<=a.dur/2&&a.dur>=120){a.half=true;if(el2)el2.textContent=a.ally.kind==="person"?"Halfway. Check in with "+a.ally.name+" if you like.":"Halfway. "+a.ally.name+" is still working beside you."}
+    else if(a.ally.kind==="familiar"&&elapsed>0&&elapsed%70===0){a.line=(a.line+1)%ALLY_LINES.length;if(el2)el2.textContent=ALLY_LINES[a.line].replace("{n}",a.ally.name)}}}
+const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+function pause(msgT,msgL){const a=S.active;a.left=leftNow();a.status="paused";a.pauseMsg=[msgT,msgL];save();drawActive()}
+function resume(){const a=S.active;if(!a)return;if(a.status==="paused"){a.endAt=Date.now()+a.left*1000;a.status="running";S.c.resumed++;checkRelics();blip(SFX.begin);save()}}
+function finish(kind){ // kind: complete | enough | partial
+  const a=S.active,q=quest(a.qid);const wasLit=wardLit(q.realm);
+  let got=0;
+  if(kind==="partial"){got=5;S.c.enough++;q.partial=true}
+  else{got=kind==="enough"?8:10;q.d=true;S.c.done++;if(q.rid){const rr=ritual(q.rid);if(rr){rr.lastDone=today();S.c.rituals++}}if(a.ally)S.c.coop++;if(kind==="enough")S.c.enough++;if(q.size==="flicker"||q.level>0)S.c.flickerDone++;if((q.tags||[]).includes("surface"))S.c.surface++;S.lastDoneAt=Date.now();S.wards[q.realm]=Date.now()}
+  if(a.status==="spent")S.c.gentle++;
+  gain(got);pendingRelics=[];checkRelics(true);
+  a.status="done";a.result={kind,got,ward:kind!=="partial"&&!wasLit?q.realm:null,relics:pendingRelics.map(r=>r.id),ally:a.ally?a.ally.name:null,ritual:!!q.rid};
+  if(kind!=="partial"){S.nowId=null;pickNow(q.id)}
+  blip(SFX.done);save();drawActive();
+}
+function swapQuest(){const a=S.active,q=quest(a.qid);S.c.swapped++;checkRelics();a.status="swap";drawActive()}
+
+function drawActive(){
+  const a=S.active,st=$("stage");st.innerHTML="";if(!a){closeActive();return}
+  const q=quest(a.qid);if(!q){S.active=null;closeActive();return}
+  $("active").dataset.s=a.status;
+  const sh=shown(q),r=R[q.realm]||R.wander,sz=SIZE[q.size];
+  if(a.status==="done"){drawDone(q);return}
+  if(a.status==="reduce"){drawReduce(q);return}
+  if(a.status==="swap"){drawSwap(q);return}
+  if(a.view==="summon"){drawSummon(q);return}
+  const kind=el("div","kind");kind.append(img(sz.icon),el("span",null,sz.label),el("span",null,"· "+r.name));
+  const h=el("h2",null,sh.t);h.id="aTitle";h.tabIndex=-1;
+  st.append(kind,h);
+  if(sh.how||q.note){const slip=el("div","slip",sh.how||"");if(q.note&&!q.level)slip.append(el("small",null,q.note));st.append(slip)}
+  const fl=el("div","flame");fl.append(img("flame","ic",""));const ck=el("div","clock",fmt(leftNow()));ck.id="aClock";ck.setAttribute("aria-label","Time left");fl.append(ck);st.append(fl);
+  const burn=el("div","burn");const bi=el("i");bi.id="aBurn";bi.style.width=(leftNow()/a.dur*100)+"%";burn.append(bi);st.append(burn);
+  if(a.ally){const box=el("div","ally"+(a.ally.kind==="person"?" person":""));box.append(a.ally.kind==="person"?img("heart","",""):img("av"+a.ally.form,"",""));
+    const t=el("div");t.append(el("b",null,a.ally.kind==="person"?"Co-op quest":"Your ally"));const ln=el("span",null,a.ally.kind==="person"?a.ally.name+" is working alongside you.":ALLY_LINES[a.line||0].replace("{n}",a.ally.name));ln.id="allyLine";t.append(ln);box.append(t);st.append(box)}
+  if(a.status==="running"){
+    st.append(el("p","status","The flame is burning."));
+    const done=el("button","btn primary big","Quest complete");done.onclick=()=>finish("complete");st.append(done);
+    const l=el("div","links");
+    const sm=el("button","lnk","Make smaller");sm.onclick=()=>{if(shrink(q)){save();drawActive();toast("Merciful magic","A smaller step still counts.","e_good")}else toast("Already the smallest step","Standing near it counts as starting.","e_think")};
+    const pz=el("button","lnk","Pause safely");pz.onclick=()=>pause("Progress preserved","The quest will resume from this point.");
+    const wo=el("button","lnk","I wandered off");wo.onclick=()=>pause("The flame waited","Come back whenever you are ready.");
+    const sw=el("button","lnk","Swap quest");sw.onclick=swapQuest;
+    l.append(sm,pz,wo,sw);
+    if(!a.ally){const al=el("button","lnk","Summon an Ally");al.onclick=()=>{a.view="summon";drawActive()};l.append(al)}
+    st.append(l);
+  }else if(a.status==="paused"){
+    const [t,m]=a.pauseMsg||["Progress preserved","The quest will resume from this point."];
+    const s=el("p","status");s.append(el("b",null,t),document.createTextNode(m));st.append(s);
+    const go=el("button","btn primary big","Resume");go.onclick=()=>{resume();drawActive()};st.append(go);
+    const l=el("div","links");const done=el("button","lnk","Quest complete");done.onclick=()=>finish("complete");
+    const back=el("button","lnk","Return to the grimoire");back.onclick=()=>{closeActive();toast("Progress preserved","Your paused quest waits at the top.","e_good")};l.append(done,back);st.append(l);
+  }else if(a.status==="spent"){
+    const s=el("p","status");s.append(el("b",null,"The flame is spent."),document.createTextNode("You may stop without penalty."));st.append(s);
+    const done=el("button","btn primary big","I'm done");done.onclick=()=>finish("enough");st.append(done);
+    const l=el("div","links");
+    const more=el("button","lnk","One more flame");more.onclick=()=>{a.dur=a.dur||300;a.endAt=Date.now()+a.dur*1000;a.status="running";S.c.gentle++;checkRelics();save();drawActive()};
+    const part=el("button","lnk","Record partial progress");part.onclick=()=>finish("partial");
+    l.append(more,part);st.append(l);
+  }
+  setTimeout(()=>{const t=$("aTitle");if(t&&document.activeElement===document.body)t.focus()},0);
+}
+function drawDone(q){
+  const st=$("stage"),res=S.active.result||{kind:"complete",got:10};
+  const c=el("div","done-card");c.append(img(res.kind==="partial"?"r_tiny":"e_happy","ic burst",""));
+  const h=el("h2",null,res.kind==="partial"?"Partial progress recorded":"Quest complete");h.id="aTitle";h.tabIndex=-1;c.append(h);
+  c.append(el("p","status",res.kind==="partial"?"The realm is already lighter. The rest of “"+q.t+"” waits in your log.":"“"+q.t+".” "+(res.kind==="enough"?"Good enough is enough.":"A little more order has returned.")));
+  const g=el("div","gain");const sp=el("div");sp.append(img("spark"),document.createTextNode("+"+res.got+" Sparks"));g.append(sp);
+  if(res.ally){const w=el("div");w.append(img("heart"),document.createTextNode("Co-op quest with "+res.ally));g.append(w)}
+  if(res.ritual){const w=el("div");w.append(img("collector"),document.createTextNode("Ritual tended. It rests until its next day."));g.append(w)}
+  if(res.ward){const w=el("div");w.append(img("k_"+res.ward),document.createTextNode(R[res.ward].name+": ward relit"));g.append(w)}
+  (res.relics||[]).forEach(id=>{const r=RELICS.find(x=>x.id===id);const w=el("div");w.append(img(r.icon),document.createTextNode("Relic recovered: "+r.name));g.append(w)});
+  c.append(g);
+  const again=el("button","btn primary","Another small quest");again.onclick=()=>{S.active=null;S.nowId=S.nowSid=null;pickNow(q.id);save();closeActive();$("now").scrollIntoView({block:"start"})};
+  const back=el("button","lnk","Return to the grimoire");back.onclick=()=>{S.active=null;save();closeActive()};
+  c.append(again,back);st.append(c);setTimeout(()=>h.focus(),0);
+}
+/* I can't start: shrink the step until crossing the threshold is easy */
+function cantStart(it){const q=adoptAny(it);S.nowId=q.id;S.nowSid=null;S.active={qid:q.id,dur:120,left:120,endAt:0,status:"reduce"};save();openActive()}
+function drawReduce(q){
+  const st=$("stage");const kind=el("div","kind");kind.append(img("orb"),el("span",null,"I can't start"));st.append(kind);
+  const atEnd=q.level>=q.ladder.length;
+  const h=el("h2",null,atEnd&&S.active.arrived?"You reached the quest area.":shown(q).t);h.id="aTitle";h.tabIndex=-1;st.append(h);
+  const lad=el("ol","ladder");[q.t].concat(q.ladder).forEach((s,i)=>{const li=el("li",i===q.level?"cur":i<q.level?"past":"",(i===0?"Original quest: ":"Smaller: ")+s);lad.append(li)});st.append(lad);
+  if(atEnd&&S.active.arrived){
+    st.append(el("p","status","That counts as starting. Choose one object when ready."));
+    const go=el("button","btn primary big","I picked one up");go.onclick=()=>{q.level=Math.max(0,q.ladder.length-1);S.active={qid:q.id,dur:120,endAt:Date.now()+120000,left:120,status:"running"};save();drawActive()};
+    st.append(go);const l=el("div","links");const back=el("button","lnk","That's enough for now");back.onclick=()=>{S.active=null;toast("You started","Standing there counted. The quest waits in your log.","e_love");save();closeActive()};l.append(back);st.append(l);return}
+  st.append(el("p","status",atEnd?"This is the smallest possible opening move.":"Take the step that feels possible. Smaller always counts."));
+  const go=el("button","btn primary big",atEnd?"I'm there":"I can do this one");
+  go.onclick=()=>{if(atEnd){S.active.arrived=true;S.c.begun++;gain(2);checkRelics();blip(SFX.begin);save();drawActive();return}
+    S.active={qid:q.id,dur:120,endAt:Date.now()+120000,left:120,status:"running"};S.c.begun++;gain(2);checkRelics();blip(SFX.begin);save();drawActive()};
+  st.append(go);
+  const l=el("div","links");
+  if(!atEnd){const sm=el("button","lnk","Smaller still");sm.onclick=()=>{shrink(q);save();drawActive()};l.append(sm)}
+  const back=el("button","lnk","Not right now");back.onclick=()=>{S.active=null;save();closeActive()};l.append(back);st.append(l);
+}
+function drawSwap(q){
+  const st=$("stage");const kind=el("div","kind");kind.append(img("k_wander"),el("span",null,"Choose another path"));st.append(kind);
+  const h=el("h2",null,"Swap “"+shown(q).t+"” for…");h.id="aTitle";h.tabIndex=-1;st.append(h);
+  const p=powerNow()&&powerNow()!=="surprise"?powerNow():null;
+  const mine=open().filter(x=>x.id!==q.id&&!x.later&&(!p||fits(x,p))).slice(0,2);
+  const inLog=new Set(S.quests.map(x=>x.sid));const sp=SPELLS.filter(s=>!inLog.has(s.sid)&&(!p||fits(s,p))).sort(()=>Math.random()-.5).slice(0,3-mine.length);
+  const list=el("ul","stack");
+  mine.forEach(x=>list.append(qcard(x,{})));sp.forEach(s=>list.append(qcard(s,{spell:true})));
+  [...list.querySelectorAll(".qcard")].forEach(c=>{c.style.background="var(--parch)";c.style.color="var(--ink)"});
+  st.append(list);
+  const l=el("div","links");const back=el("button","lnk","Keep my quest");back.onclick=()=>{S.active.status="paused";S.active.pauseMsg=["Still yours","Resume whenever you are ready."];save();drawActive()};l.append(back);st.append(l);
+}
+function resumeActive(){if(S.active&&S.active.status&&S.active.status!=="done"&&quest(S.active.qid)){if(S.active.status==="running"&&leftNow()<=0){S.active.status="spent";S.active.left=0}openActive()}}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("active").hidden&&S.active){if(S.active.status==="running")pause("Progress preserved","The quest will resume from this point.");else if(S.active.status==="done"){S.active=null;save();closeActive()}}});
+
+/* ================= Summon an Ally ================= */
+let sumPath="familiar",sumForm=17,sumName="";
+function summon(it,min){const q=adoptAny(it);q.later=false;S.nowId=q.id;S.nowRid=null;S.nowSid=null;
+  S.active={qid:q.id,dur:min*60,left:min*60,endAt:0,status:"ready",view:"summon",ally:null,line:0};save();openActive()}
+function drawSummon(q){
+  const a=S.active,st=$("stage"),pre=a.status==="ready";const min=Math.round(a.dur/60);
+  const kind=el("div","kind");kind.append(img("heart"),el("span",null,"Summon an Ally"));st.append(kind);
+  const h=el("h2",null,"Who works beside you?");h.id="aTitle";h.tabIndex=-1;st.append(h);
+  st.append(el("p","status","Body-doubling: someone nearby while you work makes starting easier. You each do your own thing."));
+  const paths=el("div","paths");
+  [["familiar","A familiar","Works quietly beside you on screen, with a check-in halfway","av"+sumForm],["person","A person","Someone in the room, on a call, or texting along","heart"]].forEach(([id,n,hint,ic])=>{
+    const b=el("button","choice");b.setAttribute("aria-pressed",sumPath===id);b.append(img(ic,"ic",""));const d=el("div");d.append(el("b",null,n),el("span",null,hint));b.append(d);b.onclick=()=>{sumPath=id;drawActive()};paths.append(b)});
+  st.append(paths);
+  if(sumPath==="familiar"){
+    const f=el("div","forms");f.setAttribute("role","group");f.setAttribute("aria-label","Choose your familiar");
+    FORMS.forEach((n,i)=>{const b=el("button","form");b.setAttribute("aria-label",ALLYN[i]+": "+n);b.title=ALLYN[i];b.setAttribute("aria-pressed",i===sumForm);b.append(img("av"+i,"",""));b.onclick=()=>{sumForm=i;drawActive()};f.append(b)});
+    st.append(f);st.append(el("p","status",ALLYN[sumForm]+" will work beside you."));
+  }else{
+    const lab=el("label","fld","Who's joining? (optional)");const inp=el("input");inp.id="allyName";inp.value=sumName;inp.placeholder="A friend";inp.autocomplete="off";inp.oninput=()=>{sumName=inp.value;$("inviteTxt").textContent=invite(q,min)};lab.append(inp);st.append(lab);
+    const inv=el("div","invite",invite(q,min));inv.id="inviteTxt";st.append(inv);
+    const cp=el("button","btn quiet","Copy invitation");cp.onclick=()=>{const t=$("inviteTxt").textContent;
+      const ok=()=>{cp.textContent="Copied";setTimeout(()=>cp.textContent="Copy invitation",1800)};
+      try{navigator.clipboard.writeText(t).then(ok,()=>{selectText($("inviteTxt"));cp.textContent="Selected. Copy it from here"})}catch(e){selectText($("inviteTxt"));cp.textContent="Selected. Copy it from here"}};
+    st.append(cp);
+  }
+  const go=el("button","btn primary big",pre?"Begin together · "+min+" min":"Bring them in");
+  go.onclick=()=>{const ally=sumPath==="familiar"?{kind:"familiar",form:sumForm,name:ALLYN[sumForm]}:{kind:"person",name:(sumName.trim()||"your ally")};
+    a.ally=ally;a.view=null;a.line=0;
+    if(pre){a.status="running";a.endAt=Date.now()+a.dur*1000;S.c.begun++;gain(2);checkRelics();blip(SFX.begin)}
+    save();drawActive()};
+  st.append(go);
+  const l=el("div","links");const back=el("button","lnk",pre?"Go alone instead":"Keep going alone");
+  back.onclick=()=>{a.view=null;if(pre){a.status="running";a.endAt=Date.now()+a.dur*1000;S.c.begun++;gain(2);checkRelics()}save();drawActive()};
+  const cancel=el("button","lnk","Not right now");cancel.onclick=()=>{if(pre){S.active=null;save();closeActive()}else{a.view=null;drawActive()}};
+  l.append(back);if(pre)l.append(cancel);st.append(l);
+  setTimeout(()=>h.focus(),0);
+}
+const invite=(q,min)=>"Want to body-double for "+min+" minutes"+(sumName.trim()?", "+sumName.trim():"")+"? I'm doing: "+((shown(q).how||shown(q).t).replace(/\.$/,""))+". You do anything you like. Same time, same flame.";
+function selectText(n){try{const r=document.createRange();r.selectNodeContents(n);const s=getSelection();s.removeAllRanges();s.addRange(r)}catch(e){}}
+
+/* ================= Ritual Book ================= */
+function ritCard(r,state){
+  const li=el("li","qcard rit"+(state==="rest"?" resting":""));const sz=SIZE[r.size];li.append(img(sz.icon,"ic",sz.name));
+  const mid=el("div");mid.append(el("b",null,r.t),el("span",null,(r.how?r.how+" ":"")+"· "+(R[r.realm]||R.wander).short));
+  if(state==="due"){mid.append(el("span","due-tag",RHY[r.rhythm]));if(wasReset(r))mid.append(el("span","reset-note","The ritual has reset. Begin again whenever you are ready."))}
+  else if(state==="rest"){mid.append(el("span","rest-tag",(r.lastDone===today()?"Tended today · ":"")+"Returns "+nextDay(r)))}
+  else mid.append(el("span","rest-tag",RHY[r.rhythm]));
+  li.append(mid);const acts=el("div","acts");
+  if(state==="due"){const b=el("button","btn","+ Begin");b.onclick=()=>begin({q:r,ritual:true},SIZE[r.size].min);acts.append(b);
+    const nt=el("button","lnk","Not today");nt.onclick=()=>{r.skip=today();if(S.nowRid===r.rid)pickNow(r.rid);save();renderAll()};acts.append(nt)}
+  if(state==="book"){const b=el("button","btn","+ Add");b.onclick=()=>{S.rituals.push({rid:S.nextRid++,bid:r.bid,t:r.t,how:r.how,realm:r.realm,size:r.size,rhythm:r.rhythm,closing:!!r.closing,tags:r.tags.slice(),ladder:r.ladder.slice(),created:today(),lastDone:null});save();renderAll();toast("Added to the Ritual Book",r.t+" · "+RHY[r.rhythm],"e_good")};acts.append(b)}
+  if(state!=="book"){
+    const sel=el("select");sel.setAttribute("aria-label","Rhythm for "+r.t);sel.style.cssText="max-width:150px;min-height:32px;font-size:14px;background:transparent;border:1px solid var(--ink-rule);color:var(--ink)";
+    RHYTHMS.forEach(([v,n])=>{const o=el("option",null,n);o.value=v;if(v===r.rhythm)o.selected=true;sel.append(o)});sel.onchange=()=>{r.rhythm=sel.value;save();renderAll()};acts.append(sel);
+    const rm=el("button","lnk","Remove");rm.onclick=()=>{S.rituals=S.rituals.filter(x=>x!==r);S.quests=S.quests.filter(q=>!(q.rid===r.rid&&!q.d));save();renderAll();toast("Ritual removed",r.t,"e_good")};acts.append(rm)}
+  li.append(acts);return li;
+}
+function renderRituals(){
+  const due=S.rituals.filter(isDue),rest=S.rituals.filter(r=>!isDue(r));
+  const d=$("ritDue");d.innerHTML="";
+  if(!S.rituals.length)d.append(el("li","empty","No rituals yet. Add one from the book below, like the Closing Ritual."));
+  else if(!due.length)d.append(el("li","empty","Every ritual is resting today."));
+  due.forEach(r=>d.append(ritCard(r,"due")));
+  const rs=$("ritRest");rs.innerHTML="";$("ritRestSum").textContent="Resting ("+rest.length+")";
+  if(!rest.length)rs.append(el("li","empty","Nothing resting."));rest.forEach(r=>rs.append(ritCard(r,"rest")));
+  const bk=$("ritBook");bk.innerHTML="";const have=new Set(S.rituals.map(r=>r.bid));
+  const avail=RBOOK.filter(b=>!have.has(b.bid));if(!avail.length)bk.append(el("li","empty","Every ritual from the book is in yours."));
+  avail.forEach(b=>bk.append(ritCard(b,"book")));
+  $("ritBookFold").open=$("ritBookFold").open||!S.rituals.length;
+}
+$("rRealm").innerHTML=REALMS.map(r=>`<option value="${r.id}">${r.name}</option>`).join("");
+$("rRhythm").innerHTML=RHYTHMS.map(([v,n])=>`<option value="${v}">${n}</option>`).join("");
+$("ritForm").onsubmit=e=>{e.preventDefault();const t=$("rTitle").value.trim(),how=$("rHow").value.trim();if(!t&&!how){$("rTitle").focus();return}
+  const realm=$("rRealm").value;S.rituals.push({rid:S.nextRid++,t:t||how,how:t?how:"",realm,size:$("rSize").value,rhythm:$("rRhythm").value,closing:/closing/i.test(t),tags:[],ladder:ladderFor(how,realm),created:today(),lastDone:null});
+  $("rTitle").value="";$("rHow").value="";save();renderAll();toast("Added to the Ritual Book",(t||how)+" · "+RHY[$("rRhythm").value],"e_good")};
+
+/* ================= move your save ================= */
+const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const dec=t=>JSON.parse(decodeURIComponent(escape(atob(t.trim().replace(/^CHORECRAFT:/,"")))));
+$("moveBtn").onclick=()=>{const p=$("movePanel");p.hidden=!p.hidden;$("moveBtn").setAttribute("aria-expanded",!p.hidden)};
+$("copySave").onclick=()=>{const code="CHORECRAFT:"+enc(Object.assign({},S,{active:null}));const b=$("copySave");
+  const fallback=()=>{$("pasteSave").value=code;$("pasteSave").select();$("moveMsg").textContent="Selected in the box above. Copy it from there."};
+  try{navigator.clipboard.writeText(code).then(()=>{b.textContent="Copied";$("moveMsg").textContent="Save code copied.";setTimeout(()=>b.textContent="Copy save code",1800)},fallback)}catch(e){fallback()}};
+$("loadSave").onclick=e=>{let d;try{d=dec($("pasteSave").value)}catch(err){$("moveMsg").textContent="That code didn't read as a Chorecraft save. Copy it again and paste the whole thing.";return}
+  if(!d||!d.v||!Array.isArray(d.quests)){$("moveMsg").textContent="That code didn't read as a Chorecraft save.";return}
+  arm(e.currentTarget,"Load this save","Tap again to replace",()=>{S=Object.assign(blank(),d);S.c=Object.assign(blank().c,S.c||{});if(!Array.isArray(S.rituals))S.rituals=[];S.active=null;S.updatedAt=Date.now();
+    save();renderAll();$("pasteSave").value="";$("moveMsg").textContent="Save loaded. Welcome back.";toast("Save loaded","The realm remembers your progress.","e_love")})};
+
+/* ================= boot ================= */
+if(S.lastSeenAt&&Date.now()-S.lastSeenAt>18*36e5){S.c.returned++;checkRelics();setTimeout(()=>toast("Welcome back, Wayward Witch","The realm remembers your progress.","e_love"),600)}
+S.lastSeenAt=Date.now();if(S.active&&S.active.status==="done")S.active=null;save(true);
+renderAll();resumeActive();
+</script>
+</body>
+</html>
